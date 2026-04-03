@@ -53,5 +53,6 @@ Route::get('/voting', [VotingController::class, 'index'])->name('voting.index');
 Route::get('/vote', [VoteController::class, 'index'])->name('vote.index');
 Route::post('/vote/store', [VoteController::class, 'store'])->name('voting.store');
 Route::get('/vote/results', [VoteController::class, 'results'])->name('vote.results');
+Route::get('/vote/predict', [VoteController::class, 'predict'])->name('vote.predict');
 
 

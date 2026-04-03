@@ -6,6 +6,7 @@ use App\Models\Leader;
 use App\Models\Party;
 use App\Models\Election;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class LeaderController extends Controller
 {
@@ -51,9 +52,9 @@ class LeaderController extends Controller
     {
      $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'party_id' => 'required||exists:parties,id',
+            'party_id' => 'required|exists:parties,id',
             'election_id' => 'required|exists:elections,id',
-            'logo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'logo' => 'required|file|mimes:jpeg,png,jpg,gif,webp|max:4096',
 
         ]);
         $logoPath = $request->file('logo')->store('logos', 'public');
@@ -91,21 +92,23 @@ class LeaderController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'party_id' => 'required||exists:parties,id',
+            'party_id' => 'required|exists:parties,id',
             'election_id' => 'required|exists:elections,id',
-            'logo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'logo' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp|max:4096',
         ]);
 
         // Check if a new logo is uploaded
         if ($request->hasFile('logo')) {
             // Delete the old logo from storage if it exists
-            if ($party->logo && file_exists(storage_path('app/public/' . $party->logo))) {
-                unlink(storage_path('app/public/' . $party->logo));
+            if ($leader->logo) {
+                Storage::disk('public')->delete($leader->logo);
             }
 
             // Store the new logo and get the file path
             $logoPath = $request->file('logo')->store('logos', 'public');
             $validated['logo'] = $logoPath;
+        } else {
+            unset($validated['logo']);
         }
     
 

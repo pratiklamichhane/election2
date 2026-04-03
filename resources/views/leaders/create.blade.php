@@ -61,12 +61,12 @@
             </div>
           </div>
 
-          <div class="col-md-4">
-            <label for="logo">Image</label>
-            <input type="file" id="logo" name="logo" class="form-control" required>
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label for="logo" class="form-label">Image</label>
+              <input type="file" id="logo" name="logo" class="form-control" accept="image/*" required>
+            </div>
           </div>
-        </div>
-        
 
           <!-- Submit Button -->
           <div class="row mb-3">
@@ -80,5 +80,4 @@
   </div>
 </div>
 @endsection
-
 

@@ -25,7 +25,7 @@
                     <h5 class="card-title">Edit</h5>
                 </div>
                 <hr>
-                <form action="{{ route('leaders.update', $leader->id) }}" method="POST">
+                <form action="{{ route('leaders.update', $leader->id) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
                     <div class="row mb-3">
@@ -65,9 +65,9 @@
                     <div class="col-md-4">
                         <label for="logo" class="form-label">Image</label>
                         <input type="file" class="form-control" id="logo" name="logo" accept="image/*">
-                        @if ($party->logo)
-                            <p>Current logo:</p>
-                            <img src="{{ asset('storage/' . $leader->logo) }}" alt="Party Logo"  style="max-width: 100px; max-height: 100px;"">
+                        @if ($leader->logo)
+                            <p class="mt-2 mb-1">Current image:</p>
+                            <img src="{{ asset('storage/' . $leader->logo) }}" alt="Leader Image" style="max-width: 100px; max-height: 100px;">
                         @endif
                     </div>
 

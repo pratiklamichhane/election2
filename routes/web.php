@@ -9,6 +9,7 @@ use App\Http\Controllers\ElectionPartiesController;
 use App\Http\Controllers\LeaderController;
 use App\Http\Controllers\VotingController;
 use App\Http\Controllers\VoteController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Middleware\isAdmin;
 
 
@@ -16,9 +17,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -49,10 +48,10 @@ Route::middleware(['auth', isAdmin::class])->prefix('admin')->group(function () 
 
 });
 
-Route::get('/voting', [VotingController::class, 'index'])->name('voting.index');
-Route::get('/vote', [VoteController::class, 'index'])->name('vote.index');
-Route::post('/vote/store', [VoteController::class, 'store'])->name('voting.store');
-Route::get('/vote/results', [VoteController::class, 'results'])->name('vote.results');
-Route::get('/vote/predict', [VoteController::class, 'predict'])->name('vote.predict');
-
-
+Route::middleware(['auth', 'verified', 'citizen.verified'])->group(function () {
+    Route::get('/voting', [VotingController::class, 'index'])->name('voting.index');
+    Route::get('/vote', [VoteController::class, 'index'])->name('vote.index');
+    Route::post('/vote/store', [VoteController::class, 'store'])->name('voting.store');
+    Route::get('/vote/results', [VoteController::class, 'results'])->name('vote.results');
+    Route::get('/vote/predict', [VoteController::class, 'predict'])->name('vote.predict');
+});

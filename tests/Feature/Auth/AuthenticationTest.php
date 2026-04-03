@@ -9,7 +9,9 @@ test('login screen can be rendered', function () {
 });
 
 test('users can authenticate using the login screen', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'is_active' => true,
+    ]);
 
     $response = $this->post('/login', [
         'email' => $user->email,
@@ -21,7 +23,9 @@ test('users can authenticate using the login screen', function () {
 });
 
 test('users can not authenticate with invalid password', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'is_active' => true,
+    ]);
 
     $this->post('/login', [
         'email' => $user->email,
@@ -29,6 +33,20 @@ test('users can not authenticate with invalid password', function () {
     ]);
 
     $this->assertGuest();
+});
+
+test('inactive users are logged out after login attempt', function () {
+    $user = User::factory()->create([
+        'is_active' => false,
+    ]);
+
+    $response = $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest();
+    $response->assertRedirect(route('login'));
 });
 
 test('users can logout', function () {

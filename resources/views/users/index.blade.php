@@ -39,6 +39,8 @@
                                 <th>Nagrita Number</th>
                                 <th>Nagrita Front</th>
                                 <th>Nagrita Back</th>
+                                <th>KYC Status</th>
+                                <th>KYC Score</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -49,31 +51,54 @@
                                 <td>{{ $user->name }}</td>
                                 <td>{{ $user->email }}</td>
                                 <td>{{ $user->phone }}</td>
-                                <td>{{ $user->kyc->nagrita_number }}</td>
+                                <td>{{ $user->kyc?->nagrita_number ?? '-' }}</td>
                                 <td>
-                                    <a href="{{ asset('storage/' . $user->kyc->nagrita_front) }}" target="_blank">
-                                        View
-                                    </a>
+                                    @if($user->kyc?->nagrita_front)
+                                        <a href="{{ asset('storage/' . $user->kyc->nagrita_front) }}" target="_blank">
+                                            View
+                                        </a>
+                                    @else
+                                        -
+                                    @endif
                                 </td>
                                 <td>
-                                    <a href="{{ asset('storage/' . $user->kyc->nagrita_back) }}" target="_blank">
-                                        View
-                                    </a>
+                                    @if($user->kyc?->nagrita_back)
+                                        <a href="{{ asset('storage/' . $user->kyc->nagrita_back) }}" target="_blank">
+                                            View
+                                        </a>
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="badge
+                                        @if($user->kyc?->verification_status === 'verified') bg-success
+                                        @elseif($user->kyc?->verification_status === 'manual_review') bg-warning text-dark
+                                        @elseif($user->kyc?->verification_status === 'rejected') bg-danger
+                                        @else bg-secondary @endif">
+                                        {{ ucfirst(str_replace('_', ' ', $user->kyc?->verification_status ?? 'pending')) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {{ $user->kyc?->verification_score ?? '-' }}
+                                    @if($user->kyc?->verification_flags)
+                                        <small class="d-block text-muted">{{ collect($user->kyc->verification_flags)->pluck('code')->take(2)->implode(', ') }}</small>
+                                    @endif
                                 </td>
                                 <td>
                                     <form action="{{ route('users.approve', $user->id) }}" method="post">
                                         @csrf
                                         @if($user->is_active)
-                                        <button class="btn btn-sm btn-warning">Ban User</button>
+                                        <button class="btn btn-sm btn-warning">Deactivate</button>
                                         @else
-                                        <button class="btn btn-sm btn-success">Approve</button>
+                                        <button class="btn btn-sm btn-success">Activate</button>
                                         @endif
                                     </form>
                                 </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="7" class="text-center">No users found.</td>
+                                <td colspan="10" class="text-center">No users found.</td>
                             </tr>
                             @endforelse
                         </tbody>

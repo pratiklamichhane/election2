@@ -18,7 +18,9 @@ class UserController extends Controller
                       ->orWhere('email', 'LIKE', "%{$search}%")
                       ->orWhere('phone', 'LIKE', "%{$search}%")
                       ->orWhereHas('kyc', function ($q) use ($search) {
-                          $q->where('nagrita_number', 'LIKE', "%{$search}%");
+                          $q->where('nagrita_number', 'LIKE', "%{$search}%")
+                            ->orWhere('verification_status', 'LIKE', "%{$search}%")
+                            ->orWhere('district', 'LIKE', "%{$search}%");
                       });
             })
             ->latest()

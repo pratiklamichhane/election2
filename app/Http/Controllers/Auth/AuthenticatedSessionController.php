@@ -27,7 +27,20 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
-        if(auth()->user()->is_active == 0){
+
+        $user = auth()->user()->loadMissing('kyc');
+
+        if (! $user->is_active) {
+            if ($user->kyc?->verification_status === 'rejected') {
+                auth()->logout();
+                return redirect()->route('login')->with('error', 'Your KYC is rejected. Please contact support.');
+            }
+
+            if ($user->kyc?->verification_status === 'manual_review') {
+                auth()->logout();
+                return redirect()->route('login')->with('error', 'Your KYC is under manual review. Please wait for admin approval.');
+            }
+
             auth()->logout();
             return redirect()->route('login')->with('error', 'Your account is on pending status');
         }

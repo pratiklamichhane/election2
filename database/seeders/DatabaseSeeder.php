@@ -30,5 +30,9 @@ class DatabaseSeeder extends Seeder
                 'is_active' => 1,
             ]
         );
+
+        $this->call([
+            NepalElectionDataSeeder::class,
+        ]);
     }
 }

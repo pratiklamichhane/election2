@@ -6,7 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\Vote;
 use App\Models\Party;
 use App\Models\Leader;
+use App\Models\Election;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use App\Services\ElectionPredictionService;
 
 class VoteController extends Controller
@@ -60,16 +62,152 @@ class VoteController extends Controller
     }
 
     //vote results
-    public function results()
+    public function results(Request $request)
     {
-        $results = Vote::select('leaders.name as leader_name', 'parties.name as party_name', \DB::raw('COUNT(votes.id) as total_votes'))
+        $filters = $request->validate([
+            'election_id' => ['nullable', 'integer', 'exists:elections,id'],
+            'party_id' => ['nullable', 'integer', 'exists:parties,id'],
+            'leader_id' => ['nullable', 'integer', 'exists:leaders,id'],
+            'from_date' => ['nullable', 'date'],
+            'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
+        ]);
+
+        $elections = Election::orderByDesc('date')->get(['id', 'name', 'date']);
+        $parties = Party::orderBy('name')->get(['id', 'name']);
+        $leaders = Leader::query()
+            ->with(['party:id,name', 'election:id,name'])
+            ->when($filters['election_id'] ?? null, function ($query, $electionId) {
+                return $query->where('election_id', $electionId);
+            })
+            ->when($filters['party_id'] ?? null, function ($query, $partyId) {
+                return $query->where('party_id', $partyId);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'party_id', 'election_id']);
+
+        $baseQuery = Vote::query()
             ->join('leaders', 'votes.leader_id', '=', 'leaders.id')
             ->join('parties', 'votes.party_id', '=', 'parties.id')
-            ->groupBy('leaders.name', 'parties.name')
-            ->orderBy('total_votes', 'DESC')
+            ->join('elections', 'leaders.election_id', '=', 'elections.id')
+            ->when($filters['election_id'] ?? null, function ($query, $electionId) {
+                return $query->where('leaders.election_id', $electionId);
+            })
+            ->when($filters['party_id'] ?? null, function ($query, $partyId) {
+                return $query->where('votes.party_id', $partyId);
+            })
+            ->when($filters['leader_id'] ?? null, function ($query, $leaderId) {
+                return $query->where('votes.leader_id', $leaderId);
+            })
+            ->when($filters['from_date'] ?? null, function ($query, $fromDate) {
+                return $query->whereDate('votes.created_at', '>=', $fromDate);
+            })
+            ->when($filters['to_date'] ?? null, function ($query, $toDate) {
+                return $query->whereDate('votes.created_at', '<=', $toDate);
+            });
+
+        $totalVotes = (clone $baseQuery)->count('votes.id');
+        $totalVoters = (clone $baseQuery)->distinct()->count('votes.user_id');
+
+        $results = (clone $baseQuery)
+            ->select([
+                'leaders.id as leader_id',
+                'leaders.name as leader_name',
+                'parties.id as party_id',
+                'parties.name as party_name',
+                'elections.id as election_id',
+                'elections.name as election_name',
+                DB::raw('COUNT(votes.id) as total_votes'),
+            ])
+            ->groupBy(
+                'leaders.id',
+                'leaders.name',
+                'parties.id',
+                'parties.name',
+                'elections.id',
+                'elections.name'
+            )
+            ->orderByDesc('total_votes')
+            ->get()
+            ->map(function ($result) use ($totalVotes) {
+                $result->vote_share = $totalVotes > 0
+                    ? round(($result->total_votes / $totalVotes) * 100, 2)
+                    : 0.0;
+
+                return $result;
+            });
+
+        $partyResults = (clone $baseQuery)
+            ->select([
+                'parties.id as party_id',
+                'parties.name as party_name',
+                DB::raw('COUNT(votes.id) as total_votes'),
+            ])
+            ->groupBy('parties.id', 'parties.name')
+            ->orderByDesc('total_votes')
             ->get();
 
-        return view('vote.results', compact('results'));
+        $electionResults = (clone $baseQuery)
+            ->select([
+                'elections.id as election_id',
+                'elections.name as election_name',
+                'elections.date as election_date',
+                DB::raw('COUNT(votes.id) as total_votes'),
+            ])
+            ->groupBy('elections.id', 'elections.name', 'elections.date')
+            ->orderByDesc('total_votes')
+            ->get();
+
+        $dailyTrend = (clone $baseQuery)
+            ->select([
+                DB::raw('DATE(votes.created_at) as vote_date'),
+                DB::raw('COUNT(votes.id) as total_votes'),
+            ])
+            ->groupBy(DB::raw('DATE(votes.created_at)'))
+            ->orderBy('vote_date')
+            ->get();
+
+        $topLeader = $results->first();
+        $topParty = $partyResults->first();
+        $activeElectionsCount = $electionResults->count();
+
+        $chartData = [
+            'partyVotes' => [
+                'labels' => $partyResults->pluck('party_name')->values(),
+                'series' => $partyResults->pluck('total_votes')->map(fn ($votes) => (int) $votes)->values(),
+            ],
+            'partyShare' => [
+                'labels' => $partyResults->pluck('party_name')->values(),
+                'series' => $partyResults->map(function ($row) use ($totalVotes) {
+                    if ($totalVotes <= 0) {
+                        return 0;
+                    }
+
+                    return round(($row->total_votes / $totalVotes) * 100, 2);
+                })->values(),
+            ],
+            'dailyTrend' => [
+                'labels' => $dailyTrend->pluck('vote_date')->values(),
+                'series' => $dailyTrend->pluck('total_votes')->map(fn ($votes) => (int) $votes)->values(),
+            ],
+            'electionComparison' => [
+                'labels' => $electionResults->pluck('election_name')->values(),
+                'series' => $electionResults->pluck('total_votes')->map(fn ($votes) => (int) $votes)->values(),
+            ],
+        ];
+
+        return view('vote.results', compact(
+            'results',
+            'elections',
+            'parties',
+            'leaders',
+            'filters',
+            'totalVotes',
+            'totalVoters',
+            'topLeader',
+            'topParty',
+            'activeElectionsCount',
+            'chartData'
+        ));
     }
 
     public function predict(ElectionPredictionService $predictionService)

@@ -74,10 +74,40 @@
                 <label for="nagrita_number" class="form-label">Nagarikta Number</label>
                 <div class="input-with-icon">
                     <i class="bi bi-card-text"></i>
-                    <input id="nagrita_number" class="form-control" type="text" name="nagrita_number" value="{{ old('nagrita_number') }}" required placeholder="Enter your citizenship number" pattern="[0-9]+" title="Citizenship number should only contain numbers">
+                    <input id="nagrita_number" class="form-control" type="text" name="nagrita_number" value="{{ old('nagrita_number') }}" required placeholder="Enter your citizenship number" pattern="[0-9०-९\-/\s]+" title="Citizenship number should contain only digits, slash, or hyphen">
                 </div>
                 <x-input-error :messages="$errors->get('nagrita_number')" class="error-message" />
-                <small class="form-text text-muted" style="font-size: 0.8rem; color: #64748b;">Only numbers allowed</small>
+                <small class="form-text text-muted" style="font-size: 0.8rem; color: #64748b;">Digits, slash, and hyphen allowed</small>
+            </div>
+
+            <!-- Date of Birth -->
+            <div class="form-group">
+                <label for="date_of_birth" class="form-label">Date of Birth</label>
+                <div class="input-with-icon">
+                    <i class="bi bi-calendar-date"></i>
+                    <input id="date_of_birth" class="form-control" type="date" name="date_of_birth" value="{{ old('date_of_birth') }}" required max="{{ now()->toDateString() }}">
+                </div>
+                <x-input-error :messages="$errors->get('date_of_birth')" class="error-message" />
+            </div>
+
+            <!-- District -->
+            <div class="form-group">
+                <label for="district" class="form-label">District</label>
+                <div class="input-with-icon">
+                    <i class="bi bi-geo-alt"></i>
+                    <input id="district" class="form-control" type="text" name="district" value="{{ old('district') }}" required placeholder="Enter your district">
+                </div>
+                <x-input-error :messages="$errors->get('district')" class="error-message" />
+            </div>
+
+            <!-- Ward Number -->
+            <div class="form-group">
+                <label for="ward_no" class="form-label">Ward Number</label>
+                <div class="input-with-icon">
+                    <i class="bi bi-123"></i>
+                    <input id="ward_no" class="form-control" type="number" name="ward_no" value="{{ old('ward_no') }}" required min="1" max="35" placeholder="1 - 35">
+                </div>
+                <x-input-error :messages="$errors->get('ward_no')" class="error-message" />
             </div>
 
             <!-- Nagrita Front -->
@@ -145,7 +175,12 @@
 
         // Nagarikta number validation - only numbers
         document.getElementById('nagrita_number').addEventListener('input', function(e) {
-            this.value = this.value.replace(/[^0-9]/g, '');
+            this.value = this.value.replace(/[^0-9०-९\-/\s]/g, '');
+        });
+
+        // District validation - letters and spaces only
+        document.getElementById('district').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^A-Za-z\s]/g, '');
         });
 
         // Password toggle functionality
@@ -171,6 +206,8 @@
             const email = document.getElementById('email').value;
             const phone = document.getElementById('phone').value;
             const nagrita = document.getElementById('nagrita_number').value;
+            const wardNo = document.getElementById('ward_no').value;
+            const dob = document.getElementById('date_of_birth').value;
 
             // Validate name - no digits
             if (/\d/.test(name)) {
@@ -193,10 +230,32 @@
                 return false;
             }
 
-            // Validate nagarikta number - only numbers
-            if (!/^\d+$/.test(nagrita)) {
+            // Validate nagarikta number
+            if (!/^[0-9०-९\-/\s]+$/.test(nagrita)) {
                 e.preventDefault();
-                alert('Nagarikta number should only contain numbers');
+                alert('Nagarikta number should only contain digits, slash, or hyphen');
+                return false;
+            }
+
+            // Validate ward number
+            if (!wardNo || Number(wardNo) < 1 || Number(wardNo) > 35) {
+                e.preventDefault();
+                alert('Ward number must be between 1 and 35');
+                return false;
+            }
+
+            // Validate age is at least 18
+            const birthDate = new Date(dob);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+
+            if (!dob || age < 18) {
+                e.preventDefault();
+                alert('You must be at least 18 years old to register for voting');
                 return false;
             }
         });
